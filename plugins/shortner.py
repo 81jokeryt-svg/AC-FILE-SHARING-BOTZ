@@ -1,11 +1,11 @@
 import requests
 import random
 import string
-from config import SHORT_URL, SHORT_API, MESSAGES
+from config import *
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InputMediaPhoto
+from pyrogram.errors import MessageNotModified
 from pyrogram.errors.pyromod import ListenerTimeout
-from helper.helper_func import force_sub
 
 # ✅ In-memory cache for links speed up
 shortened_urls_cache = {}
@@ -73,8 +73,8 @@ async def shortner_panel(client, query_or_message):
     enabled_text = "✓ ᴇɴᴀʙʟᴇᴅ" if shortner_enabled else "✗ ᴅɪsᴀʙʟᴇᴅ"
     toggle_text = "✗ ᴏғғ" if shortner_enabled else "✓ ᴏɴ"
     
-    msg = f"""<blockquote>✦ 𝗦𝗛𝗢𝗥𝗧𝗡𝗘𝗥 & 𝗩𝗘𝗥𝗜𝗙𝗜𝗖𝗔𝗧𝗜𝗢做 𝗦𝗘𝗧𝗧𝗜做𝗚𝗦</blockquote>
-**<u>ᴄᴜʀʀᴇɴᴛ sᴇᴛᴛɪɴɢs:</u>**
+    msg = f"""<blockquote>✦ 𝗦𝗛𝗢𝗥𝗧𝗡𝗘𝗥 & 𝗩𝗘𝗥𝗜𝗙𝗜𝗖𝗔𝗧𝗜𝗢𝗡 𝗦𝗘𝗧𝗧𝗜𝗡𝗚𝗦</blockquote>
+**<u>ᴄᴜʀʀᴇɴᴛ sᴇᴛᴛɪɴsettings:</u>**
 <blockquote>›› **ᴠᴇʀɪꜰɪᴄᴀᴛɪᴏɴ sᴛᴀᴛᴜs:** {enabled_text}
 ›› **sʜᴏʀᴛɴᴇʀ ᴜʀʟ:** `{short_url}`
 ›› **sʜᴏʀᴛɴᴇʀ ᴀᴘɪ:** `{short_api[:15]}...`</blockquote> 
@@ -83,21 +83,40 @@ async def shortner_panel(client, query_or_message):
 
 <blockquote>**≡ ᴜsᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴs ʙᴇʟᴏᴡ ᴛᴏ ᴄᴏɴꜰɪɢᴜʀᴇ ʏᴏᴜʀ sʜᴏʀᴛɴᴇʀ sᴇᴛᴛɪɴɢs!**</blockquote>"""
     
-    reply_markup = InlineKeyboardMarkup([
+    # Create Back Button conditionally
+    buttons = [
         [InlineKeyboardButton(f'• {toggle_text} ꜱʜᴏʀᴛɴᴇʀ •', 'toggle_shortner'), InlineKeyboardButton('• ᴀᴅᴅ ꜱʜᴏʀᴛɴᴇʀ •', 'add_shortner')],
         [InlineKeyboardButton('• ꜱᴇᴛ ᴛᴜᴛᴏʀɪᴀʟ ʟɪɴᴋ •', 'set_tutorial_link')],
-        [InlineKeyboardButton('• ᴛᴇꜱᴛ ꜱʜᴏʀᴛɴᴇʀ •', 'test_shortner')],
-        [InlineKeyboardButton('◂ ʙᴀᴄᴋ ᴛᴏ ꜱᴇᴛᴛɪɴɢꜱ', 'settings_page_2')] if hasattr(query_or_message, 'message') else []
-    ])
+        [InlineKeyboardButton('• ᴛᴇꜱᴛ ꜱʜᴏʀᴛɴᴇʀ •', 'test_shortner')]
+    ]
     
+    if hasattr(query_or_message, 'message'):
+        buttons.append([InlineKeyboardButton('◂ ʙᴀᴄᴋ ᴛᴏ ꜱᴇᴛᴛɪɴɢꜱ', 'settings_page_2')])
+        
+    reply_markup = InlineKeyboardMarkup(buttons)
     image_url = MESSAGES.get("SHORT", "https://telegra.ph/file/8aaf4df8c138c6685dcee-05d3b183d4978ec347.jpg")
     
     if hasattr(query_or_message, 'message'):
-        # Edit dynamically if triggered via page-2 callback menu
-        await query_or_message.message.edit_media(
-            media=InputMediaPhoto(media=image_url, caption=msg),
-            reply_markup=reply_markup
-        )
+        # Crash Bypass: Agar text-only menu se photo menu pe aa rahe ho to media edit kaam karega
+        try:
+            if query_or_message.message.photo or query_or_message.message.document:
+                await query_or_message.message.edit_media(
+                    media=InputMediaPhoto(media=image_url, caption=msg),
+                    reply_markup=reply_markup
+                )
+            else:
+                # Text input interface layout drops and photo drops fresh
+                await query_or_message.message.delete()
+                await client.send_photo(
+                    chat_id=query_or_message.message.chat.id,
+                    photo=image_url,
+                    caption=msg,
+                    reply_markup=reply_markup
+                )
+        except MessageNotModified:
+            pass
+        except Exception:
+            await query_or_message.message.reply_photo(photo=image_url, caption=msg, reply_markup=reply_markup)
     else:
         await query_or_message.reply_photo(photo=image_url, caption=msg, reply_markup=reply_markup)
 
@@ -115,7 +134,7 @@ async def shortner_callback(client, query):
 @Client.on_callback_query(filters.regex("^toggle_shortner$"))
 async def toggle_shortner(client: Client, query: CallbackQuery):
     if not query.from_user.id in client.admins:
-        return await query.answer('❌ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs!', show_alert=True)
+        return await query.answer('❌ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜis!', show_alert=True)
     
     current_status = getattr(client, 'verify_mode', True)
     new_status = not current_status
@@ -149,7 +168,15 @@ __<blockquote>**≡ ꜱᴇɴᴅ ɴᴇᴡ ꜱʜᴏʀᴛɴᴇʀ ᴜʀʟ ᴀɴᴅ �
 **ꜰᴏʀᴍᴀᴛ:** `ᴜʀʟ ᴀᴘɪ`
 **ᴇxᴀᴍᴘʟᴇ:** `inshorturl.com 9435894656863495834957348`"""
     
-    await query.message.edit_text(msg)
+    # Text transition panel layout logic execution
+    if query.message.photo or query.message.document:
+        await query.message.delete()
+        sent_msg = await client.send_message(query.message.chat.id, msg)
+        msg_id_to_listen = sent_msg
+    else:
+        await query.message.edit_text(msg)
+        msg_id_to_listen = query.message
+
     try:
         res = await client.listen(user_id=query.from_user.id, filters=filters.text, timeout=60)
         response_text = res.text.strip()
@@ -170,16 +197,16 @@ __<blockquote>**≡ ꜱᴇɴᴅ ɴᴇᴡ ꜱʜᴏʀᴛɴᴇʀ ᴜʀʟ ᴀɴᴅ �
                 global shortened_urls_cache
                 shortened_urls_cache.clear()
                 
-                await query.message.edit_text(f"**✓ ꜱʜᴏʀᴛɴᴇʀ ꜱᴇᴛᴛɪɴɢꜱ ᴜᴘᴅᴀᴛᴇᴅ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ!**\n\n**ɴᴇᴡ ᴜʀʟ:** `{new_url}`\n**ɴᴇᴡ ᴀᴘɪ:** `{new_api[:15]}...`", 
+                await msg_id_to_listen.edit_text(f"**✓ ꜱʜᴏʀᴛɴᴇʀ ꜱᴇᴛᴛɪɴɢꜱ ᴜᴘᴅᴀᴛᴇᴅ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ!**\n\n**ɴᴇᴡ ᴜʀʟ:** `{new_url}`\n**ɴᴇᴡ ᴀᴘɪ:** `{new_api[:15]}...`", 
                                             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('‹ ʙᴀᴄᴋ', 'shortner')]]))
             else:
-                await query.message.edit_text("**✗ ɪɴᴠᴀʟɪᴅ ꜰᴏʀᴍᴀᴛ! ᴘʟᴇᴀꜱᴇ ᴄʜᴇᴄᴋ ᴜʀʟ ᴀɴᴅ ᴀᴘɪ ᴋᴇʏ.**", 
+                await msg_id_to_listen.edit_text("**✗ ɪɴᴠᴀʟɪᴅ ꜰᴏʀᴍᴀᴛ! ᴘʟᴇᴀꜱᴇ ᴄʜᴇᴄᴋ ᴜʀʟ ᴀɴᴅ ᴀᴘɪ ᴋᴇʏ.**", 
                                             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('‹ ʙᴀᴄᴋ', 'shortner')]]))
         else:
-            await query.message.edit_text("**✗ ɪɴᴠᴀʟɪᴅ ꜰᴏʀᴍᴀᴛ! ᴘʟᴇᴀꜱᴇ ᴜꜱᴇ: `ᴜʀʟ ᴀᴘɪ`**", 
+            await msg_id_to_listen.edit_text("**✗ ɪɴᴠᴀʟɪᴅ ꜰᴏʀᴍᴀᴛ! ᴘʟᴇᴀꜱᴇ ᴜꜱᴇ: `ᴜʀʟ ᴀᴘɪ`**", 
                                         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('‹ ʙᴀᴄᴋ', 'shortner')]]))
     except ListenerTimeout:
-        await query.message.edit_text("**⏰ ᴛɪᴍᴇᴏᴜᴛ! ᴛʀʏ ᴀɢᴀɪɴ.**", 
+        await msg_id_to_listen.edit_text("**⏰ ᴛɪᴍᴇᴏᴜᴛ! ᴛʀʏ ᴀɢᴀɪɴ.**", 
                                     reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('‹ ʙᴀᴄᴋ', 'shortner')]]))
 
 #===============================================================#
@@ -191,27 +218,35 @@ async def set_tutorial_link(client: Client, query: CallbackQuery):
     
     await query.answer()
     current_tutorial = getattr(client, 'tutorial_link', "https://t.me/How_to_Download_7x/26")
-    msg = f"""<blockquote>****ꜱᴇᴛ ᴛᴜᴛᴏʀɪᴀʟ ʟɪɴᴋ:****</blockquote>
+    msg = f"""<blockquote>****\x1b[1mꜱᴇᴛ ᴛᴜᴛᴏʀɪᴀʟ ʟɪɴᴋ:\x1b[1m****</blockquote>
 **ᴄᴜʀʀᴇɴᴛ ᴛᴜᴛᴏʀɪᴀʟ:** `{current_tutorial}`
 
 __sᴇɴᴅ ᴛʜᴇ ɴᴇᴡ ᴛᴜᴛᴏʀɪᴀʟ ʟɪɴᴋ ɪɴ ᴛʜᴇ ɴᴇxᴛ 60 sᴇᴄᴏɴᴅs!__
 **ᴇxᴀᴍᴘʟᴇ:** `https://t.me/How_to_Download_7x/26`"""
     
-    await query.message.edit_text(msg)
+    if query.message.photo or query.message.document:
+        await query.message.delete()
+        sent_msg = await client.send_message(query.message.chat.id, msg)
+        msg_id_to_listen = sent_msg
+    else:
+        await query.message.edit_text(msg)
+        msg_id_to_listen = query.message
+        
     try:
         res = await client.listen(user_id=query.from_user.id, filters=filters.text, timeout=60)
         new_tutorial = res.text.strip()
         
-        if new_tutorial and (new_tutorial.startswith('https://') or new_tutorial.startswith('http://')):
+        # Proper Python tuple verification fix inside conditions
+        if new_tutorial and new_tutorial.startswith(('https://', 'http://')):
             client.tutorial_link = new_tutorial
             await client.mongodb.update_shortner_setting('tutorial_link', new_tutorial)
-            await query.message.edit_text(f"**✓ ᴛᴜᴛᴏʀɪᴀʟ ʟɪɴᴋ ᴜᴘᴅᴀᴛᴇᴅ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ!**", 
+            await msg_id_to_listen.edit_text(f"**✓ ᴛᴜᴛᴏʀɪᴀʟ ʟɪɴᴋ ᴜᴘᴅᴀᴛᴇᴅ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ!**", 
                                         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('‹ ʙᴀᴄᴋ', 'shortner')]]))
         else:
-            await query.message.edit_text("**✗ ɪɴᴠᴀʟɪᴅ ʟɪɴᴋ ꜰᴏʀᴍᴀᴛ! ᴍᴜꜱᴛ ꜱᴛᴀʀᴛ ᴡɪᴛʜ https:// ᴏʀ http://**", 
+            await msg_id_to_listen.edit_text("**✗ ɪɴᴠᴀʟɪᴅ ʟɪɴᴋ ꜰᴏʀᴍᴀᴛ! ᴍᴜꜱᴛ ꜱᴛᴀʀᴛ ᴡɪᴛʜ https:// ᴏʀ http://**", 
                                         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('‹ ʙᴀᴄᴋ', 'shortner')]]))
     except ListenerTimeout:
-        await query.message.edit_text("**⏰ ᴛɪᴍᴇᴏᴜᴛ! ᴛʀʏ ᴀɢᴀɪɴ.**", 
+        await msg_id_to_listen.edit_text("**⏰ ᴛɪᴍᴇᴏᴜᴛ! ᴛʀʏ ᴀɢᴀɪɴ.**", 
                                     reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('‹ ʙᴀᴄᴋ', 'shortner')]]))
 
 #===============================================================#
@@ -222,7 +257,14 @@ async def test_shortner(client: Client, query: CallbackQuery):
         return await query.answer('❌ ᴏɴʟʏ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ᴜꜱᴇ ᴛʜɪꜱ!', show_alert=True)
     
     await query.answer()
-    await query.message.edit_text("**🔄 ᴛᴇꜱᴛɪɴɢ ꜱʜᴏʀᴛɴᴇʀ ᴄᴏɴɴᴇᴄᴛɪᴏɴ...**")
+    
+    # Render layout switch logic check to handle if photo drops or normal edits apply
+    if query.message.photo or query.message.document:
+        await query.message.delete()
+        status_msg = await client.send_message(query.message.chat.id, "**🔄 ᴛᴇꜱᴛɪɴɢ ꜱʜᴏʀᴛɴᴇʀ ᴄᴏɴɴᴇᴄᴛɪᴏɴ...**")
+    else:
+        await query.message.edit_text("**🔄 ᴛᴇꜱᴛɪɴɢ ꜱʜᴏʀᴛɴᴇʀ ᴄᴏɴɴᴇᴄᴛɪᴏɴ...**")
+        status_msg = query.message
     
     short_url = getattr(client, 'short_url', SHORT_URL)
     short_api = getattr(client, 'short_api', SHORT_API)
@@ -243,7 +285,7 @@ async def test_shortner(client: Client, query: CallbackQuery):
 **ꜱʜᴏʀᴛ ᴜʀʟ:** `{short_link}`
 **ʀᴇꜱᴘᴏɴꜱᴇ:** `{rjson.get('status', 'Unknown')}`"""
         else:
-            msg = f"""**❌ ꜱʜᴏʀᴛɴᴇʀ ᴛᴇꜱᴛ ꜰᴀɪʟᴇᴅ!**
+            msg = f"""**❌ ꜱʜᴏʀᴛɴᴇʀ ᴛᴇꜱᴛ ꜰᴀɪʟᴇfailed!**
 
 **ᴇʀʀᴏʀ:** `{rjson.get('message', 'Unknown error')}`
 **ꜱᴛᴀᴛᴜꜱ ᴄᴏᴅᴇ:** `{response.status_code}`"""
@@ -251,4 +293,4 @@ async def test_shortner(client: Client, query: CallbackQuery):
     except Exception as e:
         msg = f"**❌ ꜱʜᴏʀᴛɴᴇʀ ᴛᴇꜱᴛ ꜰᴀɪʟᴇᴅ!**\n\n**ᴇʀʀᴏʀ:** `{str(e)}`"
     
-    await query.message.edit_text(msg, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('‹ ʙᴀᴄᴋ', 'shortner')]]))
+    await status_msg.edit_text(msg, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('‹ ʙᴀᴄᴋ', 'shortner')]]))
