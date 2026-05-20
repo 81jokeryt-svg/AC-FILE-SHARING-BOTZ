@@ -9,7 +9,7 @@ OWNER_ID = 5898522531
 MSG_EFFECT = 5046509860389126442
 
 SHORT_URL = "linkshortify.com" # shortner url 
-SHORT_API = "" 
+SHORT_API = "9d9199caec2c2e30e0670f1549ffa1a316caa541" 
 SHORT_TUT = "https://t.me/How_to_Download_7x/26"
 
 # Bot Configuration
