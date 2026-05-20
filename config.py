@@ -12,9 +12,6 @@ SHORT_URL = "linkshortify.com" # shortner url
 SHORT_API = "9d9199caec2c2e30e0670f1549ffa1a316caa541" 
 SHORT_TUT = "https://t.me/How_to_Download_7x/26"
 
-# Verification Expiry Configuration (In Seconds)
-# 24 Hours = 86400 | 12 Hours = 43200 | 1 Hour = 3600
-VERIFY_EXPIRE = 86400  
 
 # Bot Credentials
 SESSION = "Usekaluubot"
@@ -28,7 +25,7 @@ DB_NAME = "yato"
 
 FSUBS = [[-1003793273994, False, 10]] # Force Subscription Channels [channel_id, request_enabled, timer_in_minutes]
 # Database Channel (Primary)
-DB_CHANNEL = -100341748575   # just put channel id dont add ""
+DB_CHANNEL = -1003741748575   # just put channel id dont add ""
 
 # Auto Delete Timer (seconds)
 AUTO_DEL = 300
