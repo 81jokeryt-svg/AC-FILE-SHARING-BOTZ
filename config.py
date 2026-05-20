@@ -13,13 +13,13 @@ SHORT_API = ""
 SHORT_TUT = "https://t.me/How_to_Download_7x/26"
 
 # Bot Configuration
-SESSION = "yato"
-TOKEN = "642712"
-API_ID = ""
-API_HASH = ""
+SESSION = ""
+TOKEN = "8308247591:AAHtF7zD4EcmbP2YmNbGETDZuNP7et_lKq8"
+API_ID = "38160381"
+API_HASH = "9f7879d8793fd4bfd887d023cc1d3872"
 WORKERS = 5
 
-DB_URI = "mongodb"
+DB_URI = "mongodb+srv://Anubhav09:kalu1234@anubhav09.ljn6xdp.mongodb.net/?appName=Anubhav09"
 DB_NAME = "yato"
 
 FSUBS = [[-1003016571084, False, 10]] # Force Subscription Channels [channel_id, request_enabled, timer_in_minutes]
