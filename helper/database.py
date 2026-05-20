@@ -131,6 +131,78 @@ class MongoDB:
         user = await self.user_data.find_one({'_id': user_id})
         return user.get('ban', False) if user else False
 
+
+    # ✅ VERIFICATION & EXPIRE FUNCTIONS
+
+    async def get_verify_status(self, user_id: int) -> dict:
+        """User ka current verification status fetch karega"""
+        user = await self.user_data.find_one({'_id': user_id})
+        if user and 'verify_status' in user:
+            return user['verify_status']
+        
+        # Default structure agar user new hai ya data missing hai
+        return {
+            'is_verified': False,
+            'verified_time': 0,
+            'verify_token': "",
+            'link': ""
+        }
+
+    async def is_user_verified(self, user_id: int, expire_seconds: int = 86400) -> bool:
+        """
+        Check karega user verified hai ya nahi aur expiry handle karega.
+        Default expire_seconds = 86400 (24 Hours)
+        """
+        # Pro/Premium users ke liye verification bypass (Hamesha True)
+        if await self.is_pro(user_id):
+            return True
+
+        status = await self.get_verify_status(user_id)
+        
+        if not status.get('is_verified', False):
+            return False
+
+        # Current epoch time
+        current_time = int(time.time())
+        verified_time = status.get('verified_time', 0)
+
+        # Check agar token expire ho chuka hai
+        if (current_time - verified_time) > expire_seconds:
+            # Automatic database me status reset (Expire) kar do
+            await self.reset_verify_status(user_id)
+            return False
+
+        return True
+
+    async def update_user_verify(self, user_id: int, token: str, link: str = ""):
+        """Jab user successful verify ho jaye tab data update karne ke liye"""
+        verify_data = {
+            'is_verified': True,
+            'verified_time': int(time.time()),
+            'verify_token': token,
+            'link': link
+        }
+        await self.user_data.update_one(
+            {'_id': user_id},
+            {'$set': {'verify_status': verify_data}},
+            upsert=True
+        )
+
+    async def reset_verify_status(self, user_id: int):
+        """Verification expire hone par ya manually reset karne ke liye"""
+        default_verify = {
+            'is_verified': False,
+            'verified_time': 0,
+            'verify_token': "",
+            'link': ""
+        }
+        await self.user_data.update_one(
+            {'_id': user_id},
+            {'$set': {'verify_status': default_verify}},
+            upsert=True
+        )
+
+    
     # ✅ FSUB CHANNELS FUNCTIONS
 
     async def set_fsub_channels(self, fsub_data: dict):
