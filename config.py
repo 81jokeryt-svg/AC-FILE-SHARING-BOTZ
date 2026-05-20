@@ -13,7 +13,7 @@ SHORT_API = "9d9199caec2c2e30e0670f1549ffa1a316caa541"
 SHORT_TUT = "https://t.me/How_to_Download_7x/26"
 
 # Bot Configuration
-SESSION = "yato"
+SESSION = "Usekaluubot"
 TOKEN = "8308247591:AAHtF7zD4EcmbP2YmNbGETDZuNP7et_lKq8"
 API_ID = "38160381"
 API_HASH = "9f7879d8793fd4bfd887d023cc1d3872"
