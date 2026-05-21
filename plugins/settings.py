@@ -8,12 +8,9 @@ import humanize
 
 @Client.on_callback_query(filters.regex("^settings$"))
 async def settings(client, query):
-    # Count active force subscription channels by type
     total_fsub = len(client.fsub_dict)
     request_enabled = sum(1 for data in client.fsub_dict.values() if data[2])
     timer_enabled = sum(1 for data in client.fsub_dict.values() if data[3] > 0)
-    
-    # Count DB channels
     total_db_channels = len(getattr(client, 'db_channels', {}))
     primary_db = getattr(client, 'primary_db_channel', client.db)
     
@@ -25,18 +22,7 @@ async def settings(client, query):
 ›› **ᴅɪsᴀʙʟᴇ ʙᴜᴛᴛᴏɴ:** `{"✓ ᴛʀᴜᴇ" if client.disable_btn else "✗ ꜰᴀʟsᴇ"}`
 ›› **ʀᴇᴘʟʏ ᴛᴇxᴛ:** `{client.reply_text if client.reply_text else 'ɴᴏɴᴇ'}`
 ›› **ᴀᴅᴍɪɴs:** `{len(client.admins)}`
-›› **sʜᴏʀᴛɴᴇʀ ᴜʀʟ:** `{getattr(client, 'short_url', 'ɴᴏᴛ sᴇᴛ')}`
-›› **ᴛᴜᴛᴏʀɪᴀʟ ʟɪɴᴋ:** `{getattr(client, 'tutorial_link', 'ɴᴏᴛ sᴇᴛ')}`
-›› **sᴛᴀʀᴛ ᴍᴇssᴀɢᴇ:**
-<pre>{client.messages.get('START', 'ᴇᴍᴘᴛʏ')}</pre>
-›› **sᴛᴀʀᴛ ɪᴍᴀɢᴇ:** `{bool(client.messages.get('START_PHOTO', ''))}`
-›› **ꜰᴏʀᴄᴇ sᴜʙ ᴍᴇssᴀɢᴇ:**
-<pre>{client.messages.get('FSUB', 'ᴇᴍᴘᴛʏ')}</pre>
-›› **ꜰᴏʀᴄᴇ sᴜʙ ɪᴍᴀɢᴇ:** `{bool(client.messages.get('FSUB_PHOTO', ''))}`
-›› **ᴀʙᴏᴜᴛ ᴍᴇssᴀɢᴇ:**
-<pre>{client.messages.get('ABOUT', 'ᴇᴍᴘᴛʏ')}</pre>
-›› **ʀᴇᴘʟʏ ᴍᴇssᴀɢᴇ:**
-<pre>{client.reply_text}</pre>
+›› **ᴠᴇʀɪꜰɪᴄᴀᴛɪᴏɴ:** `{"✓ ᴇɴᴀʙʟᴇᴅ" if getattr(client, 'verify_mode', True) else "✗ ᴅɪsᴀʙʟᴇᴅ"}`
     """
     reply_markup = InlineKeyboardMarkup([
         [InlineKeyboardButton('ꜰꜱᴜʙ ᴄʜᴀɴɴᴇʟꜱ', 'fsub'), InlineKeyboardButton('ᴅʙ ᴄʜᴀɴɴᴇʟꜱ', 'db_channels')],
@@ -50,43 +36,20 @@ async def settings(client, query):
 
 @Client.on_callback_query(filters.regex("^settings_page_2$"))
 async def settings_page_2(client, query):
-    # Count active force subscription channels by type
-    total_fsub = len(client.fsub_dict)
-    request_enabled = sum(1 for data in client.fsub_dict.values() if data[2])
-    timer_enabled = sum(1 for data in client.fsub_dict.values() if data[3] > 0)
-    
-    # Count DB channels
-    total_db_channels = len(getattr(client, 'db_channels', {}))
-    primary_db = getattr(client, 'primary_db_channel', client.db)
-    
-    msg = f"""<blockquote>✦ sᴇᴛᴛɪɴɢs ᴏғ @{client.username}</blockquote>
-›› **ꜰsᴜʙ ᴄʜᴀɴɴᴇʟs:** `{total_fsub}` (ʀᴇǫᴜᴇsᴛ: {request_enabled}, ᴛɪᴍᴇʀ: {timer_enabled})
-›› **ᴅʙ ᴄʜᴀɴɴᴇʟs:** `{total_db_channels}` (ᴘʀɪᴍᴀʀʏ: `{primary_db}`)
-›› **ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ ᴛɪᴍᴇʀ:** `{client.auto_del}`
-›› **ᴘʀᴏᴛᴇᴄᴛ ᴄᴏɴᴛᴇɴᴛ:** `{"✓ ᴛʀᴜᴇ" if client.protect else "✗ ꜰᴀʟsᴇ"}`
+    msg = f"""<blockquote>✦ sᴇᴛᴛɪɴɢs ᴘᴀɢᴇ 2 ᴏғ @{client.username}</blockquote>
 ›› **ᴅɪsᴀʙʟᴇ ʙᴜᴛᴛᴏɴ:** `{"✓ ᴛʀᴜᴇ" if client.disable_btn else "✗ ꜰᴀʟsᴇ"}`
 ›› **ʀᴇᴘʟʏ ᴛᴇxᴛ:** `{client.reply_text if client.reply_text else 'ɴᴏɴᴇ'}`
-›› **ᴀᴅᴍɪɴs:** `{len(client.admins)}`
-›› **sʜᴏʀᴛɴᴇʀ ᴜʀʟ:** `{getattr(client, 'short_url', 'ɴᴏᴛ sᴇᴛ')}`
-›› **ᴛᴜᴛᴏʀɪᴀʟ ʟɪɴᴋ:** `{getattr(client, 'tutorial_link', 'ɴᴏᴛ sᴇᴛ')}`
-›› **sᴛᴀʀᴛ ᴍᴇssᴀɢᴇ:**
-<pre>{client.messages.get('START', 'ᴇᴍᴘᴛʏ')}</pre>
 ›› **sᴛᴀʀᴛ ɪᴍᴀɢᴇ:** `{bool(client.messages.get('START_PHOTO', ''))}`
-›› **ꜰᴏʀᴄᴇ sᴜʙ ᴍᴇssᴀɢᴇ:**
-<pre>{client.messages.get('FSUB', 'ᴇᴍᴘᴛʏ')}</pre>
 ›› **ꜰᴏʀᴄᴇ sᴜʙ ɪᴍᴀɢᴇ:** `{bool(client.messages.get('FSUB_PHOTO', ''))}`
-›› **ᴀʙᴏᴜᴛ ᴍᴇssᴀɢᴇ:**
-<pre>{client.messages.get('ABOUT', 'ᴇᴍᴘᴛʏ')}</pre>
-›› **ʀᴇᴘʟʏ ᴍᴇssᴀɢᴇ:**
-<pre>{client.reply_text}</pre>
     """
     reply_markup = InlineKeyboardMarkup([
         [InlineKeyboardButton('ᴘʀᴏᴛᴇᴄᴛ ᴄᴏɴᴛᴇɴᴛ', 'protect'), InlineKeyboardButton('ᴘʜᴏᴛᴏs', 'photos')],
-        [InlineKeyboardButton('ᴛᴇxᴛs', 'texts'), InlineKeyboardButton('sʜᴏʀᴛɴᴇʀ', 'shortner')],
+        [InlineKeyboardButton('ᴛᴇxᴛs', 'texts'), InlineKeyboardButton('• ᴠᴇʀɪꜰɪᴄᴀᴛɪᴏɴ •', 'verification_menu')],
         [InlineKeyboardButton('‹ ᴘʀᴇᴠ', 'settings'), InlineKeyboardButton('ʜᴏᴍᴇ', 'home')]
     ])
     await query.message.edit_text(msg, reply_markup=reply_markup)
     return
+
 
 #===============================================================#
 
