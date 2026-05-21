@@ -55,19 +55,7 @@ async def start_command(client: Client, message: Message):
                     ])
                 )
 
-        # 4. File Delivery (Sab check clear hone par)
-        # Yahan apna wahi purana logic decode/get_messages ka continue karein
-        # ... (Aapka existing code)
-        return
-
-    # 5. Normal Start Message
-    else:
-        # Aapka normal button logic
-        return
-
-            return  # prevent sending actual files
-
-        # 6. Decode and prepare file IDs
+        
         try:
             string = await decode(base64_string)
             argument = string.split("-")
