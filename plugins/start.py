@@ -14,65 +14,57 @@ import asyncio
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
 
-    # 1. Add user if not present
-    present = await client.mongodb.present_user(user_id)
-    if not present:
-        try:
-            await client.mongodb.add_user(user_id)
-        except Exception as e:
-            client.LOGGER(__name__, client.name).warning(f"Error adding a user:\n{e}")
+    # 1. Database & Banned Check
+    if not await client.mongodb.present_user(user_id):
+        await client.mongodb.add_user(user_id)
 
-    # 2. Check if banned
-    is_banned = await client.mongodb.is_banned(user_id)
-    if is_banned:
+    if await client.mongodb.is_banned(user_id):
         return await message.reply("**You have been banned from using this bot!**")
+
+    # 2. Check Premium
+    is_user_pro = await client.mongodb.is_pro(user_id)
 
     text = message.text
     if len(text) > 7:
         try:
-            original_payload = text.split(" ", 1)[1]
-            base64_string = original_payload
-
-            is_short_link = False
-            if base64_string.startswith("yu3elk"):
-                base64_string = base64_string[6:-1]
-                is_short_link = True
-
+            base64_string = text.split(" ", 1)[1]
         except IndexError:
             return await message.reply("Invalid command format.")
 
-        # 3. Check premium status
-        is_user_pro = await client.mongodb.is_pro(user_id)
-        
-        # 4. Check if shortner is enabled
-        shortner_enabled = getattr(client, 'shortner_enabled', True)
+        # 3. VERIFICATION LOGIC (Shortner removed)
+        # Check if user needs verification (Free user only)
+        if client.verify_mode and not is_user_pro and user_id != OWNER_ID:
+            verify_data = await client.mongodb.get_fsub_status(user_id, "verification")
+            
+            # Agar data dict hai toh expiry check karo
+            is_verified = False
+            if isinstance(verify_data, dict):
+                last_time = verify_data.get("last_verified")
+                # Expiry time check (client.verify_expiry seconds mein)
+                if last_time and (datetime.now() - last_time).total_seconds() < client.verify_expiry:
+                    is_verified = True
+            
+            if not is_verified:
+                return await message.reply(
+                    "⚠️ **Verification Required!**\n\n"
+                    "Please verify to access your file directly.",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("• ᴠᴇʀɪꜰʏ ɴᴏᴡ •", callback_data="verification_menu")],
+                        [InlineKeyboardButton("ᴛᴜᴛᴏʀɪᴀʟ •", url=getattr(client, 'tutorial_link', "https://t.me/How_to_Download_7x/26")),
+                         InlineKeyboardButton("• ʙᴜʏ ᴘʀᴇᴍɪᴜᴍ •", url="https://t.me/Premium_Fliix/21")]
+                    ])
+                )
 
-        # 5. If user is not premium AND shortner is enabled, send short URL and return
-        if not is_user_pro and user_id != OWNER_ID and not is_short_link and shortner_enabled:
-            try:
-                short_link = get_short(f"https://t.me/{client.username}?start=yu3elk{base64_string}7", client)
-            except Exception as e:
-                client.LOGGER(__name__, client.name).warning(f"Shortener failed: {e}")
-                return await message.reply("Couldn't generate short link.")
+        # 4. File Delivery (Sab check clear hone par)
+        # Yahan apna wahi purana logic decode/get_messages ka continue karein
+        # ... (Aapka existing code)
+        return
 
-            short_photo = client.messages.get("SHORT_PIC", "")
-            short_caption = client.messages.get("SHORT_MSG", "")
-            tutorial_link = getattr(client, 'tutorial_link', "https://t.me/How_to_Download_7x/26")
+    # 5. Normal Start Message
+    else:
+        # Aapka normal button logic
+        return
 
-            await client.send_photo(
-                chat_id=message.chat.id,
-                photo=short_photo,
-                caption=short_caption,
-                reply_markup=InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton("• ᴏᴘᴇɴ ʟɪɴᴋ", url=short_link),
-                        InlineKeyboardButton("ᴛᴜᴛᴏʀɪᴀʟ •", url=tutorial_link)
-                    ],
-                    [
-                        InlineKeyboardButton(" • ʙᴜʏ ᴘʀᴇᴍɪᴜᴍ •", url="https://t.me/Premium_Fliix/21")
-                    ]
-                ])
-            )
             return  # prevent sending actual files
 
         # 6. Decode and prepare file IDs
