@@ -182,6 +182,28 @@ class MongoDB:
         """Set shortner on/off status"""
         await self.update_shortner_setting('enabled', enabled)
 
+
+        # ✅ VERIFICATION SETTINGS FUNCTIONS
+
+    async def set_verify_settings(self, verify_data: dict):
+        """Store verification settings to database"""
+        await self.user_data.update_one(
+            {"_id": "verify_settings"},
+            {"$set": {"settings": verify_data}},
+            upsert=True
+        )
+
+    async def get_verify_settings(self) -> dict:
+        """Get verification settings from database"""
+        data = await self.user_data.find_one({"_id": "verify_settings"})
+        return data.get("settings", {"verify_mode": True, "expiry_time": 3600})
+
+    async def update_verify_setting(self, key: str, value):
+        """Update a single verification setting"""
+        current_data = await self.get_verify_settings()
+        current_data[key] = value
+        await self.set_verify_settings(current_data)
+
     # ✅ FSUB STATUS COLLECTION FUNCTIONS
 
     async def update_fsub_status(self, user_id: int, channel_id: int, status: str):
